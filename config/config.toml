@@ -10,9 +10,9 @@ port = 1314
 
 [faucet]
 # account_prefix for bech32 encoding
-account_prefix="ethm"
+account_prefix="cosmos"
 # env_prefix for storing the all env variables
-env_prefix="ETHERMINT"
+env_prefix=""
 # amount is tokens per request
 amount = 10000
 # maximum tokens allowed for an account
@@ -21,5 +21,5 @@ max_tokens = 10000000
 # <host>:<port> to Tendermint RPC interface for this chain
 node = "tcp://localhost:26657"
 # chain denom
-denom = "aphoton"
+denom = "stake"
 

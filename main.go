@@ -6,14 +6,13 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/server"
 	svrcmd "github.com/cosmos/cosmos-sdk/server/cmd"
+	"github.com/cosmos/cosmos-sdk/simapp"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/gsk967/cosmos-faucet/cmd"
 	faucetconfig "github.com/gsk967/cosmos-faucet/config"
 	"github.com/gsk967/cosmos-faucet/utils"
 	"github.com/labstack/gommon/log"
 	"github.com/spf13/cobra"
-	"github.com/tharsis/ethermint/app"
-	"github.com/tharsis/ethermint/encoding"
 	"os"
 )
 
@@ -31,16 +30,15 @@ func init() {
 func main() {
 
 	rootCmd := &cobra.Command{
-		Use:   "ethermint-faucet",
-		Short: "ethermint faucet",
+		Use:   "cosmos-faucet",
+		Short: "cosmos faucet",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 			// setting up sdk bech32 config
 			utils.SetupConfig(cfg.Faucet.AccountPrefix)
 
 			// register all module interfaces for encoding/decoding
-			encodingConfig := encoding.MakeConfig(app.ModuleBasics)
-
+			encodingConfig := simapp.MakeTestEncodingConfig()
 			// client context
 			initClientCtx := client.Context{}.
 				WithCodec(encodingConfig.Marshaler).
