@@ -18,13 +18,17 @@ type Config struct {
 		// env_prefix for storing the all env variables
 		EnvPrefix string `yaml:"env_prefix" mapstructure:"env_prefix"`
 		// amount is tokens per request
-		Amount uint64 `yaml:"amount" mapstructure:"amount" validate:"required"`
+		Amount int64 `yaml:"amount" mapstructure:"amount" validate:"required"`
 		// maximum tokens allowed for an account
-		MaxTokens uint64 `yaml:"max_tokens" mapstructure:"max_tokens" validate:"required"`
+		MaxTokens int64 `yaml:"max_tokens" mapstructure:"max_tokens" validate:"required"`
 		// tendermint node address
 		Node string `yaml:"node" mapstructure:"node" validate:"required"`
+		// Lcd for quering the account balances
+		Lcd string `yaml:"lcd" mapstructure:"lcd" validate:"required"`
 		// chain denom
 		Denom string `yaml:"denom" mapstructure:"denom" validate:"required"`
+		// Decimals
+		Decimals int `yaml:"decimals" json:"decimals" mapstructure:"decimals"  validate:"required"`
 	}
 }
 

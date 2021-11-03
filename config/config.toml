@@ -14,12 +14,19 @@ account_prefix="ethm"
 # env_prefix for storing the all env variables
 env_prefix="ETHERMINT"
 # amount is tokens per request
-amount = 10000
+# this will be 500 * 10^decimals
+amount = 500
 # maximum tokens allowed for an account
-max_tokens = 10000000
+# this will be 5000 * 10^decimals
+max_tokens = 5000
 # tendermint node address
 # <host>:<port> to Tendermint RPC interface for this chain
 node = "tcp://localhost:26657"
+# lcd
+# http://<host>:<post>
+lcd = "http://localhost:1317"
 # chain denom
-denom = "aphoton"
-
+# 1 gnt = 10^decimals agnt
+denom = "agnt"
+# decimals will be 10^decimals
+decimals = "18"

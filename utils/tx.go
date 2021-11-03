@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
@@ -11,18 +12,33 @@ import (
 	"github.com/labstack/gommon/log"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
+	"math/big"
+	"net/http"
 )
 
 func GetTokens(ctx client.Context, cfg *faucetconfig.Config, flagSet *pflag.FlagSet, toAddress sdk.AccAddress) error {
-	ctx, err := ReadTxCommandFlags(ctx, flagSet)
+	// fetching the account balance by denom
+	denomBalance, err := queryAccountBalanceByDenom(cfg, toAddress.String())
+	fmt.Println("Account Balance ", toAddress.String(), denomBalance.toString())
 	if err != nil {
-		fmt.Errorf("couldn't ReadPersistentCommandFlags: %v", err)
+		_ = fmt.Errorf("error while getting the denom balance %v", err)
+		return err
+	}
+	balance, _ := sdk.NewIntFromString(denomBalance.Balance.Amount)
+	if balance.GTE(sdk.NewInt(cfg.Faucet.MaxTokens).Mul(sdk.NewIntFromBigInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(cfg.Faucet.Decimals)), nil)))) {
+		return errors.New("Maximum tokens are already transferred")
+	}
+
+	ctx, err = ReadTxCommandFlags(ctx, flagSet)
+	if err != nil {
+		_ = fmt.Errorf("couldn't ReadPersistentCommandFlags: %v", err)
 		return err
 	}
 	ctx = ctx.WithBroadcastMode(flags.BroadcastBlock)
 	fromAddress := ctx.GetFromAddress()
-	log.Info(fmt.Sprintf("Transfering the %d%s tokens from %s to %s", cfg.Faucet.Amount, cfg.Faucet.Denom, fromAddress, toAddress))
-	msgSend := banktypes.NewMsgSend(fromAddress, toAddress, sdk.NewCoins(sdk.NewCoin(cfg.Faucet.Denom, sdk.NewInt(int64(cfg.Faucet.Amount)))))
+	tokens := sdk.NewInt(cfg.Faucet.Amount).Mul(sdk.NewIntFromBigInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(cfg.Faucet.Decimals)), nil)))
+	log.Info(fmt.Sprintf("Transfering the %s%s tokens from %s to %s", tokens, cfg.Faucet.Denom, fromAddress, toAddress))
+	msgSend := banktypes.NewMsgSend(fromAddress, toAddress, sdk.NewCoins(sdk.NewCoin(cfg.Faucet.Denom, tokens)))
 	sdkResponse, err := submitTx(ctx, flagSet, msgSend)
 	if err != nil {
 		_ = fmt.Errorf("error at submit the tx %v", err)
@@ -37,11 +53,41 @@ func GetTokens(ctx client.Context, cfg *faucetconfig.Config, flagSet *pflag.Flag
 	return nil
 }
 
+// AccountDenomBalance is denom response format
+type AccountDenomBalance struct {
+	Balance struct {
+		Denom  string `json:"denom" yaml:"denom"`
+		Amount string `json:"amount" yaml:"amount"`
+	} `json:"balance" yaml:"balance"`
+}
+
+func (a AccountDenomBalance) toString() string {
+	return fmt.Sprintf("%s%s", a.Balance.Amount, a.Balance.Denom)
+}
+
+// query the account balance by denom
+func queryAccountBalanceByDenom(cfg *faucetconfig.Config, toAddress string) (*AccountDenomBalance, error) {
+	// query the account balances
+	resp, err := http.Get(fmt.Sprintf(cfg.Faucet.Lcd + fmt.Sprintf("/cosmos/bank/v1beta1/balances/%s/%s", toAddress, cfg.Faucet.Denom)))
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	var cResp AccountDenomBalance
+	if err := json.NewDecoder(resp.Body).Decode(&cResp); err != nil {
+		return nil, err
+	}
+	return &cResp, nil
+}
+
 // submitTx will submit the signed sdk.Msg to tendermint node
 func submitTx(clientCtx client.Context, flagSet *pflag.FlagSet, msgs ...sdk.Msg) (*sdk.TxResponse, error) {
 	// validate the messages
 	for _, msg := range msgs {
 		if err := msg.ValidateBasic(); err != nil {
+			fmt.Println(err.Error())
 			return nil, err
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/gsk967/cosmos-faucet/config"
 	"github.com/gsk967/cosmos-faucet/utils"
 	"github.com/labstack/echo/v4"
@@ -13,6 +14,7 @@ import (
 	"github.com/spf13/pflag"
 	"html/template"
 	"io"
+	"math/big"
 	"net/http"
 )
 
@@ -64,9 +66,14 @@ func startServer(ctx client.Context, cfg *config.Config, flagSet *pflag.FlagSet)
 		templates: template.Must(template.ParseGlob("views/*.html")),
 	}
 	e.Renderer = renderer
+	tokens := sdk.NewInt(cfg.Faucet.Amount).Mul(sdk.NewIntFromBigInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(cfg.Faucet.Decimals)), nil)))
+	maxTokens := sdk.NewInt(cfg.Faucet.MaxTokens).Mul(sdk.NewIntFromBigInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(cfg.Faucet.Decimals)), nil)))
 
 	e.GET("/", func(c echo.Context) error {
-		return c.Render(http.StatusOK, "index.html", map[string]interface{}{})
+		return c.Render(http.StatusOK, "index.html", map[string]interface{}{
+			"tokens":    fmt.Sprintf("%s%s", tokens, cfg.Faucet.Denom),
+			"maxTokens": fmt.Sprintf("%s%s", maxTokens, cfg.Faucet.Denom),
+		})
 	})
 
 	e.POST("/", func(c echo.Context) error {
@@ -75,6 +82,8 @@ func startServer(ctx client.Context, cfg *config.Config, flagSet *pflag.FlagSet)
 		if err != nil {
 			return c.Render(http.StatusOK, "index.html", map[string]interface{}{
 				"errorMessage": fmt.Sprintf("Error while account checking... \n %s", err.Error()),
+				"tokens":       fmt.Sprintf("%s%s", tokens, cfg.Faucet.Denom),
+				"maxTokens":    fmt.Sprintf("%s%s", maxTokens, cfg.Faucet.Denom),
 			})
 		}
 		e.Logger.Printf(fmt.Sprintf("toAddress %s", toAddress))
@@ -82,10 +91,14 @@ func startServer(ctx client.Context, cfg *config.Config, flagSet *pflag.FlagSet)
 		if err != nil {
 			return c.Render(http.StatusOK, "index.html", map[string]interface{}{
 				"errorMessage": fmt.Sprintf("Error while submit the tx... \n %s", err.Error()),
+				"tokens":       fmt.Sprintf("%s%s", tokens, cfg.Faucet.Denom),
+				"maxTokens":    fmt.Sprintf("%s%s", maxTokens, cfg.Faucet.Denom),
 			})
 		} else {
 			return c.Render(http.StatusOK, "index.html", map[string]interface{}{
-				"successMessage": fmt.Sprintf("%d%s tokens send to your account %s", cfg.Faucet.Amount, cfg.Faucet.Denom, val),
+				"successMessage": fmt.Sprintf("%s%s tokens send to your account %s", tokens, cfg.Faucet.Denom, val),
+				"tokens":         fmt.Sprintf("%s%s", tokens, cfg.Faucet.Denom),
+				"maxTokens":      fmt.Sprintf("%s%s", maxTokens, cfg.Faucet.Denom),
 			})
 		}
 	})
